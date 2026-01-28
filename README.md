@@ -123,7 +123,7 @@ git checkout 500xCompressor
 
 
 ## 📌 Citation
-如果你觉得这项工作对你有帮助，请引用我们的论文：
+如果你觉得这项工作对你有帮助，欢迎引用我们的论文：
 
 ```
 @misc{liu2025autoencodingfreecontextcompressionllms,
