@@ -1,92 +1,144 @@
-# 项目上传github
-1. 项目文件夹简称UPL，首先安装python及其需要的包运行以下命令
-```
-git clone https://github.com/1azybug/UPL.git
-cd UPL
-conda create -n UPL python==3.10.4
-conda activate UPL
+# Autoencoding-Free Context Compression for LLMs via Contextual Semantic Anchors
+
+<p align="center">
+    <a href="https://arxiv.org/abs/2510.08907"><img src="https://img.shields.io/badge/arXiv-2408.03094-b31b1b.svg" alt="Paper"></a>
+    <a href=""><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow" alt="Models"></a>
+    <a href=""><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Datasets-orange" alt="Datasets"></a>
+    <a href="https://creativecommons.org/licenses/by/4.0/"><img src="https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg" alt="License"></a>
+    <a href="https://iclr.cc/"><img src="https://img.shields.io/badge/ICLR-2026%20Poster-blue" alt="Conference"></a>
+</p>
+
+<p align="center">
+  <b><a href="#-environment">🛠️ Environment</a></b> •
+  <b><a href="#-training--evaluation">📖 Training</a></b> •
+  <b><a href="#-results">📊 Results</a></b> •
+  <b><a href="#-citation">📌 Citation</a></b>
+
+[//]: # (  <b><a href="#-news">🚀 News</a></b> •)
+
+[//]: # (  <b><a href="#-introduction">✨ Introduction</a></b> •)
+</p>
+
+---
+
+[//]: # (## 🚀 News)
+
+[//]: # (- **[2025.05.15]** 🎉 Our paper was accepted by **ACL 2025 Main**.)
+
+[//]: # (- **[2024.08.06]** The paper was uploaded to [Arxiv]&#40;https://arxiv.org/abs/2408.03094&#41;.)
+
+[//]: # ()
+[//]: # (---)
+
+[//]: # ()
+[//]: # (## ✨ Introduction)
+
+[//]: # (**500xCompressor** 是一种创新的提示词压缩方法，能够将高达 **500个** 自然语言 Token 压缩为仅 **1个** 特殊 Token。该压缩 Token 可直接用于 **文本还原 &#40;Regeneration&#41;** 或 **下游问答 &#40;QA&#41;** 任务。)
+
+[//]: # ()
+[//]: # ()
+[//]: # ()
+[//]: # (### 🌟 Key Advantages)
+
+[//]: # (- **极高效率**: 仅需为 LLM 添加 **0.3%** 的额外参数（基于 LoRA）。)
+
+[//]: # (- **即插即用**: 压缩后的 Token 可被原始 LLM 直接识别，无需对 LLM 进行额外微调。)
+
+[//]: # (- **超高压缩比**: 支持从 **6x** 到 **480x** 的压缩范围。)
+
+[//]: # (- **强泛化能力**: 在 **Strictly Unseen** 的文本和数据集上表现优异。)
+
+[//]: # (- **能力保留**: 相比未压缩的 Prompt，保留了 **62.26-72.89%** 的模型能力。)
+
+[//]: # ()
+[//]: # (---)
+
+## 🛠️ Environment
+
+```bash
+# 创建并激活环境
+conda create -n SAC python=3.10.4
+conda activate SAC
+# 安装依赖
 pip install -r requirements.txt
 ```
-2. 安装好环境后配置所需模型、数据集
--  模型：https://huggingface.co/meta-llama/Llama-2-7b-hf
--  预训练数据集：https://huggingface.co/datasets/DKYoon/SlimPajama-6B
--  微调数据集：https://huggingface.co/datasets/mrqa-workshop/mrqa
 
-3. 切换到正确的分支
-如果你想做ICAE的实验，忽略该步骤。
+## 📦 Models & Datasets
 
-* 如果你想做500xCompressor的实验，则切换分支后，再看Readme.md：
-```
-git branch
-git checkout 500xCompressor
-```
+| 类别 (Type) | 资源名称 (Resource Name) | 获取链接 (Access Link) | 检查点 (SAC CheckPoint) |
+| :--- | :--- | :--- | :--- |
+| **Model** | **Llama-3.2-1B** | [🤗 HF Link](https://huggingface.co/meta-llama/Llama-3.2-1B) |
+| **Model** | **Llama-3.2-3B** | [🤗 HF Link](https://huggingface.co/meta-llama/Llama-3.2-3B) |
+| **Model** | **Llama-3.1-8B** | [🤗 HF Link](https://huggingface.co/meta-llama/Llama-3.1-8B) |
+| **Corpus** | **SlimPajama-6B** (Pre-train) | [🤗 Dataset](https://huggingface.co/datasets/DKYoon/SlimPajama-6B) |
+| **Dataset** | **MRQA** (Fine-tune) | [🤗 Dataset](https://huggingface.co/datasets/mrqa-workshop/mrqa) |
 
+## 📖 Training & Evaluation
 
+### Config 配置
 
-
-4. 修改experiment文件夹下的[config.json](./experiment/main/ICAE_1.1B_UPL/config.json)文件，填写模型和数据集的本地路径
-```
+修改 `experiment/sac_experiment/config.json` 文件：
+```bash
 "model_id": "your_model_path",
 "dataset_repo": "your_data_path/DKYoon/SlimPajama-6B",
 "instruction_dataset_repo": "your_data_path/mrqa-workshop_mrqa"
 ```
+> 调整并行参数: 根据您的 GPU 数量修改梯度累积步数，确保： batch_size_per_device * device_count * gradient_accumulation_steps == total_batch_size
 
-5. 修改experiment文件夹下的[config.json](./experiment/main/ICAE_1.1B_UPL/config.json)文件，**根据您的GPU数量修改梯度累积的步数**，确保 
-```
-batch_size_per_device*device_count*gradient_accumulation_steps==total_batch_size
-```
-```
-"batch_size_per_device": 1,
-"device_count": 8,
-"gradient_accumulation_steps": 2,
-```
+### 继续预训练(Pretrain)
 
-## 继续预训练
-```
+```bash
 cd pretrain
-
-处理一次数据集即可：python pre_prepare_data.py --work_dir '../experiment/main/ICAE_1.1B_UPL'
-使用LLama3.1需要更新transformers版本: pip install --upgrade transformers
-训练模型：python ./pre_trainer.py --work_dir '../experiment/main/ICAE_1.1B_UPL' --port 14529
-测试模型：python ./pre_evaluator.py --work_dir '../experiment/main/ICAE_1.1B_UPL' --batch_size 1
+# 处理一次数据集即可
+python pre_prepare_data.py --work_dir '../experiment/sac_experiment'
+# 训练模型
+python ./pre_trainer.py --work_dir '../experiment/sac_experiment' --port 14572
+# 模型评估
+python ./pre_evaluator.py --work_dir '../experiment/sac_experiment' --batch_size 1
 ```
 
-## 微调
-```
+### 微调 (Fine-tuning)
+
+```bash
 cd sft
-处理一次数据集即可：python instruction_prepare_data.py --work_dir '../experiment/main/ICAE_1.1B_UPL'
-
-微调训练：python ./instruction_trainer.py --work_dir '../experiment/main/ICAE_1.1B_UPL' --port 14525
-模型测试：python ./instruction_evaluator.py --work_dir '../experiment/main/ICAE_1.1B_UPL' --batch_size 1
-         python ../util/evaluate_ood.py --work_dir '../experiment/main/ICAE_1.1B_UPL'
-         python ../util/evaluate_iid.py --work_dir '../experiment/main/ICAE_1.1B_UPL'
-
-训练模型和测试结果均保存在'../experiment/main/ICAE_1.1B_UPL/output'文件夹里
-
-```
----------------------
-# 检查完一大半了
-
-## 500xCompress复现
-```
-配一下config的数据集和模型路径
-cd 500xCompress
-预训练...
-微调...
+# 处理一次数据集即可
+python instruction_prepare_data.py --work_dir '../experiment/sac_experiment'
+# 微调训练
+python ./instruction_trainer.py --work_dir '../experiment/sac_experiment' --port 14527 > train.log 2>&1 &
+# 模型评估
+python ./instruction_evaluator.py --work_dir '../experiment/sac_experiment' --batch_size 1
+# 结果分析
+python ../util/evaluate_iid.py --work_dir '../experiment/sac_experiment'
+python ../util/evaluate_ood.py --work_dir '../experiment/sac_experiment'
 ```
 
-# 节省时间简化版
+### 其他实验 (ICAE、500xCompressor、EPL ...)
+若需进行 500xCompressor 相关实验，请切换至对应分支，操作流程相同：
+```bash
+git checkout 500xCompressor
 ```
-配置好每个config的模型和数据集路径
-500xCompress复现
-cd 500xCompress
-bash pretrain.sh 等待完事即可
-bash sft.sh 等待完事即可
 
-icae的复现
-cd pretrain
-bash pretrain_script.sh 等待完事即可
-bash sft_script.sh 等待完事即可
+## 📊 Results
 
-最后进入util的evaluate_ood，配一下每个config的路径，测sft结果
+
+
+## 📌 Citation
+如果你觉得这项工作对你有帮助，请引用我们的论文：
+
 ```
+@misc{liu2025autoencodingfreecontextcompressionllms,
+      title={Autoencoding-Free Context Compression for LLMs via Contextual Semantic Anchors}, 
+      author={Xin Liu and Runsong Zhao and Pengcheng Huang and Xinyu Liu and Junyi Xiao and Chunyang Xiao and Tong Xiao and Shengxiang Gao and Zhengtao Yu and Jingbo Zhu},
+      year={2025},
+      eprint={2510.08907},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2510.08907}, 
+}
+```
+
+
+
+
+
+
