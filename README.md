@@ -21,11 +21,10 @@
 
 ---
 
-[//]: # (## 🚀 News)
+## 🚀 News
 
-[//]: # (- **[2025.05.15]** 🎉 Our paper was accepted by **ACL 2025 Main**.)
+- **[2025.01.26]** 🎉 Our paper was accepted by **ICLR 2026 Poster**.
 
-[//]: # (- **[2024.08.06]** The paper was uploaded to [Arxiv]&#40;https://arxiv.org/abs/2408.03094&#41;.)
 
 [//]: # ()
 [//]: # (---)
