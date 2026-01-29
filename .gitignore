@@ -1,7 +1,7 @@
 **/output/
 **/debug/
 **log.txt
-**/experiment/
+#**/experiment/
 **/main_experiment_5x/
 **/main_experiment_170x/
 **/ablation_experiment/

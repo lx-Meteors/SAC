@@ -48,7 +48,7 @@ def get_ids(instruction_dataset_repo_name, examples_list, tokenizer, split):
     # info_list = []
     minn = 999999
     maxn = 0
-    llm_lingua = PromptCompressor(model_name="/mnt/zhaorunsong/models/llmlingua-2-xlm-roberta-large-meetingbank",use_llmlingua2=True)
+    llm_lingua = PromptCompressor(model_name="/models/llmlingua-2-xlm-roberta-large-meetingbank",use_llmlingua2=True)
     for example in tqdm(examples_list, desc="Processing examples"):
 
         ##########################取其中一个答案用于训练即可##############################
