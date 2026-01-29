@@ -50,7 +50,7 @@
     "data_config": {
         "dataset_repo": "/dataset/DKYoon/SlimPajama-6B",
         "samples_num": 320000,
-        "min_len": 1018,
+        "min_len": 510,
         "max_len": 2040,
         "model_id": "/models/meta-llama/Llama-3.2-1B",
         "instruction_dataset_repo": "/dataset/bigData/mrqa-workshop_mrqa"
