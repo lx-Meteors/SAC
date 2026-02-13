@@ -267,28 +267,39 @@ class CompressLLM(torch.nn.Module):
         return concatenated_past_key_values, end_idx
 
     def lm_inference(self, inputs, generate_num=64):
-        # ==================== 计时：压缩阶段开始 ====================
+
+        # =====================================================
+        # 🔵 Compress Stage Timing
+        # =====================================================
         torch.cuda.synchronize()
+
         start_compress = torch.cuda.Event(enable_timing=True)
         end_compress = torch.cuda.Event(enable_timing=True)
+
         start_compress.record()
 
         concatenated_past_key_values, end_idx = self.compress(inputs)
 
         end_compress.record()
         torch.cuda.synchronize()
-        compress_time = start_compress.elapsed_time(end_compress)  # 毫秒
-        # ==================== 计时：压缩阶段结束 ====================
 
-        # ==================== 解码阶段 ====================
+        compress_time = start_compress.elapsed_time(end_compress)  # ms
+
+        # =====================================================
+        # 🔵 Decode Preparation
+        # =====================================================
         lm_target_emb = self.decoder.model.embed_tokens(inputs['lm_targets'])
         bsz, seq_len, emb_size = lm_target_emb.size()
-        expand_lm_token = self.special_tokens[1:2].unsqueeze(0).expand(bsz, 1, emb_size)
 
+        expand_lm_token = self.special_tokens[1:2].unsqueeze(0).expand(bsz, 1, emb_size)
         lm_emb = torch.cat([expand_lm_token, lm_target_emb], dim=1)
-        # context position ids:[1,......,end_idx]
-        #                                         [LM] position ids:[end_idx];  QA position ids:[end_idx+1,.......]
-        latter_position_ids = torch.arange(end_idx, end_idx + seq_len + 1, device=lm_target_emb.device).unsqueeze(0)
+
+        latter_position_ids = torch.arange(
+            end_idx,
+            end_idx + seq_len + 1,
+            device=lm_target_emb.device
+        ).unsqueeze(0)
+
         lm_position_ids = latter_position_ids
 
         generate_text = []
@@ -296,57 +307,70 @@ class CompressLLM(torch.nn.Module):
         next_inputs_embeds = lm_emb.clone()
         next_position_ids = lm_position_ids.clone()
 
-        # ==================== 计时器初始化 ====================
-        total_decode_time = 0.0
-        step_times = []
+        # =====================================================
+        # 🔵 Decode Stage Timing（Benchmark标准）
+        # =====================================================
+        start_decode = torch.cuda.Event(enable_timing=True)
+        end_decode = torch.cuda.Event(enable_timing=True)
+
+        torch.cuda.synchronize()
+        start_decode.record()
 
         for i in range(generate_num):
-            torch.cuda.synchronize()
-            start_step = torch.cuda.Event(enable_timing=True)
-            end_step = torch.cuda.Event(enable_timing=True)
-            start_step.record()
 
             if self.task_config["use_pe"]:
-                out = self.decoder(position_ids=next_position_ids,
-                                   inputs_embeds=next_inputs_embeds,
-                                   past_key_values=past_key_values,
-                                   use_cache=True)
+                out = self.decoder(
+                    position_ids=next_position_ids,
+                    inputs_embeds=next_inputs_embeds,
+                    past_key_values=past_key_values,
+                    use_cache=True
+                )
             else:
-                out = self.decoder(inputs_embeds=next_inputs_embeds,
-                                   past_key_values=past_key_values,
-                                   use_cache=True)
+                out = self.decoder(
+                    inputs_embeds=next_inputs_embeds,
+                    past_key_values=past_key_values,
+                    use_cache=True
+                )
 
-            end_step.record()
-            torch.cuda.synchronize()
-            # 每步耗时记录
-            step_time = start_step.elapsed_time(end_step)
-            step_times.append(step_time)
-            total_decode_time += step_time
-
-            # [B,S,V] -> [B,V]
+            # ===== 正常生成 =====
             logit = out.logits[:, -1]
             past_key_values = out.past_key_values
-            # [B,V]->[B]
-            next_token_id = torch.argmax(logit, dim=-1)
-            # [B]->[B,E]->[B,1,E]
-            next_inputs_embeds = self.decoder.model.embed_tokens(next_token_id).unsqueeze(1).to(lm_target_emb.device)
-            # [1, seq_len]/[1,1] -> [1,1]
-            next_position_ids = next_position_ids[:, -1:] + 1
-            generate_text.append(next_token_id.item())
-            # if next_token_id.item() == self.tokenizer.eos_token_id:
-            #     return generate_text
-        avg_decode_time = total_decode_time / len(step_times)
 
-        # ==================== 输出 ====================
+            next_token_id = torch.argmax(logit, dim=-1)
+
+            next_inputs_embeds = self.decoder.model.embed_tokens(
+                next_token_id
+            ).unsqueeze(1).to(lm_target_emb.device)
+
+            next_position_ids = next_position_ids[:, -1:] + 1
+
+            generate_text.append(next_token_id.item())
+
+            # if next_token_id.item() == self.tokenizer.eos_token_id:
+            #     break
+
+        end_decode.record()
+        torch.cuda.synchronize()
+
+        total_decode_time = start_decode.elapsed_time(end_decode)
+
+        real_steps = max(len(generate_text), 1)
+        avg_decode_time = total_decode_time / real_steps
+
+        # =====================================================
+        # 🔵 输出
+        # =====================================================
         print(f"压缩阶段耗时: {compress_time:.2f} ms")
         print(f"解码阶段总耗时: {total_decode_time:.2f} ms")
         print(f"平均每步耗时: {avg_decode_time:.2f} ms")
         print(f"总耗时: {compress_time + total_decode_time:.2f} ms")
+
         return generate_text, {
             "compress_time_ms": compress_time,
             "decode_time_total_ms": total_decode_time,
             "decode_time_avg_ms": avg_decode_time
         }
+
 
     def ae_inference(self, inputs):
         concatenated_past_key_values, end_idx = self.compress(inputs)
