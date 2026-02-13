@@ -168,6 +168,7 @@ class CompressLLM(torch.nn.Module):
 
     def compress(self, inputs):
         bsz, total_length = inputs['input_ids'].size()
+        print(f"total_length:{total_length}")
         ######################################应该不需要截断context##########################################
         # inputs['input_ids'] = inputs['input_ids'][:, :total_length - (total_length % self.compress_ratio)]
         # bsz, total_length = inputs['input_ids'].size()
@@ -316,35 +317,35 @@ class CompressLLM(torch.nn.Module):
         torch.cuda.synchronize()
         start_decode.record()
 
-        for i in range(generate_num):
+        # for i in range(generate_num):
 
-            if self.task_config["use_pe"]:
-                out = self.decoder(
-                    position_ids=next_position_ids,
-                    inputs_embeds=next_inputs_embeds,
-                    past_key_values=past_key_values,
-                    use_cache=True
-                )
-            else:
-                out = self.decoder(
-                    inputs_embeds=next_inputs_embeds,
-                    past_key_values=past_key_values,
-                    use_cache=True
-                )
+        #     if self.task_config["use_pe"]:
+        #         out = self.decoder(
+        #             position_ids=next_position_ids,
+        #             inputs_embeds=next_inputs_embeds,
+        #             past_key_values=past_key_values,
+        #             use_cache=True
+        #         )
+        #     else:
+        #         out = self.decoder(
+        #             inputs_embeds=next_inputs_embeds,
+        #             past_key_values=past_key_values,
+        #             use_cache=True
+        #         )
 
-            # ===== 正常生成 =====
-            logit = out.logits[:, -1]
-            past_key_values = out.past_key_values
+        #     # ===== 正常生成 =====
+        #     logit = out.logits[:, -1]
+        #     past_key_values = out.past_key_values
 
-            next_token_id = torch.argmax(logit, dim=-1)
+        #     next_token_id = torch.argmax(logit, dim=-1)
 
-            next_inputs_embeds = self.decoder.model.embed_tokens(
-                next_token_id
-            ).unsqueeze(1).to(lm_target_emb.device)
+        #     next_inputs_embeds = self.decoder.model.embed_tokens(
+        #         next_token_id
+        #     ).unsqueeze(1).to(lm_target_emb.device)
 
-            next_position_ids = next_position_ids[:, -1:] + 1
+        #     next_position_ids = next_position_ids[:, -1:] + 1
 
-            generate_text.append(next_token_id.item())
+        #     generate_text.append(next_token_id.item())
 
             # if next_token_id.item() == self.tokenizer.eos_token_id:
             #     break

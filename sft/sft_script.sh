@@ -1,5 +1,5 @@
 
-CUDA_VISIBLE_DEVICES=0 python ./instruction_evaluator.py --work_dir   '../experiment/500x_time' --batch_size 1
+CUDA_VISIBLE_DEVICES=1 python ./instruction_evaluator.py --work_dir   '../experiment/500x_time' --batch_size 10
 
 
 

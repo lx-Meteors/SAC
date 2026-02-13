@@ -101,7 +101,7 @@ class Evaluator:
         training_config = self.config["sft_training_config"]
         task_config = self.config["sft_task_config"]
         train_examples, eval_examples = get_examples(**self.config["data_config"])
-        eval_examples = eval_examples[:100]
+        eval_examples = eval_examples[:1000]
         example_num_per_gpu = len(eval_examples)//training_config["device_count"]
 
         if rank <= self.device_count-2:

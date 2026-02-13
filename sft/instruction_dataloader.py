@@ -1,5 +1,6 @@
 from torch.utils.data import DataLoader, Dataset, IterableDataset
 import torch
+import torch.nn.functional as F
 
 class CompressDataset(IterableDataset):
     def __init__(self, examples, batch_size):
@@ -9,23 +10,68 @@ class CompressDataset(IterableDataset):
 
 
     def __iter__(self):
+
+        MAX_LEN = 510   # 你要固定长度
+
         batch = {key: [] for key in self.examples[0].keys()}
-        count = 0  # 初始化计数器
+        count = 0
+
+        def pad_and_stack(values, pad_val):
+
+            padded = []
+
+            for v in values:
+
+                # ===== 截断 =====
+                if v.size(0) > MAX_LEN:
+                    v = v[:MAX_LEN]
+
+                # ===== padding =====
+                elif v.size(0) < MAX_LEN:
+                    v = F.pad(v, (0, MAX_LEN - v.size(0)), value=pad_val)
+
+                padded.append(v)
+
+            return torch.stack(padded)
 
         for example in self.examples:
+
             for key, value in example.items():
                 batch[key].append(value)
-            
-            count += 1  # 更新计数器
 
-            # 当计数器达到 batch_size 时 yield 批次
+
+
+            count += 1
+
+            # ===== 满 batch =====
             if count == self.batch_size:
-                # yield {key: torch.stack(value) for key, value in batch.items()}
-                # only for batch_size == 1 
-                assert self.batch_size==1
-                yield {key: torch.stack(value) if value[0] is not None else None for key, value in batch.items()}
-                batch = {key: [] for key in batch}  # 重置批次
-                count = 0  # 重置计数器
+
+                output = {}
+
+                for key, value in batch.items():
+
+                    # None 类型直接保留
+                    if value[0] is None:
+                        output[key] = None
+                        continue
+
+                    # ⭐⭐⭐ 关键：不同 key 不同 padding
+                    if key == "input_ids":
+                        output[key] = pad_and_stack(value, 0)
+
+                    elif key == "lm_targets":
+                        output[key] = pad_and_stack(value, 0)
+
+                    else:
+                        # 其他 tensor 默认 stack
+                        output[key] = torch.stack(value)
+
+                yield output
+
+                # reset
+                batch = {key: [] for key in batch}
+                count = 0
+    
                 
                 
 def get_dataset(task_type, examples, batch_size):
